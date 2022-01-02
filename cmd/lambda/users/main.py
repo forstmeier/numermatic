@@ -9,6 +9,7 @@ def handler(event, context):
     print('event:', event)
 
     api_key = uuid.uuid4()
+    user_id = uuid.uuid4()
 
     stripe.api_key = os.getenv('STRIPE_API_KEY')
 
@@ -66,6 +67,9 @@ def handler(event, context):
                     'S': body['email'],
                 },
                 'user_id': {
+                    'S': user_id,
+                },
+                'stripe_customer_id': {
                     'S': create_customer_response['id'],
                 },
             }

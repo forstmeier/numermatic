@@ -39,7 +39,7 @@ def handler(event, context):
             '''.format(event['error'])
 
         send_email_response = ses.send_email(
-            Source='', # NOTE: this will need to be verified with SES
+            Source=os.getenv["SOURCE_EMAIL"], # NOTE: this will need to be verified with SES
             Destination=event['email'],
             Message={
                 Subject: {

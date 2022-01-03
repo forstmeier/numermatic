@@ -20,30 +20,20 @@ def handler(event, context):
 
     ses = boto3.client('ses')
     try:
-        if event['status'] == 'success':
-            subject = 'Your model has been successfully trained!'
+        body = '''
+        Download your files from the presigned URLs below:
 
-            body = '''
-            Download your files from the presigned URLs below:
-
-            Model: {0}
-            Predictions: {1}
-            Validations: {2}
-            '''.format(presigned_urls[0], presigned_urls[1], presigned_urls[2])
-
-        elif event['status'] == 'failure':
-            subject = 'Your model failed to train!'
-
-            body = '''
-            Error: {0}
-            '''.format(event['error'])
+        Model: {0}
+        Predictions: {1}
+        Validations: {2}
+        '''.format(presigned_urls[0], presigned_urls[1], presigned_urls[2])
 
         send_email_response = ses.send_email(
             Source=os.getenv["SOURCE_EMAIL"], # NOTE: this will need to be verified with SES
             Destination=event['email'],
             Message={
                 Subject: {
-                    Data: subject,
+                    Data: 'Your model has been successfully trained!',
                 },
                 Body: {
                     Text: {

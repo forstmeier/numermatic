@@ -79,10 +79,28 @@ def handler(event, context):
         tag='latest',
     )
 
+    step_function = boto3.client('stepfunctions')
+    try:
+        step_function.start_execution(
+            stateMachineArn=os.environ['STATE_MACHINE_ARN'],
+            input=json.dumps({
+                'email': email,
+                'user_id': user_id,
+                'stripe_customer_id': stripe_customer_id,
+                'image_name': image_name,
+            }),
+        )
+    except Exception as e:
+        return {
+            Body: str(e),
+            StatusCode: 500,
+            IsBase64Encoded: False,
+        }
+
     return {
-        'status': 'success',
-        'email': email,
-        'user_id': user_id,
-        'stripe_customer_id': stripe_customer_id,
-        'image_name': image_name,
+        Body: json.dumps({
+            message: 'successfully started pipeline',
+        }),
+        StatusCode: 200,
+        IsBase64Encoded: False,
     }

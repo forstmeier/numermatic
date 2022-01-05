@@ -1,0 +1,168 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Description: core infrastructure definitions
+
+Parameters:
+  DataBucket:
+    Type: String
+    Description: S3 bucket to store data
+  SchedulerEnabled:
+    Type: String
+    Description: Toggle scheduler on or off
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'false'
+  NumeraiPublicID:
+    Type: String
+    Description: Numerai public ID
+  NumeraiSecretKey:
+    Type: String
+    Description: Numerai secret key
+  SourceEmail:
+    Type: String
+    Description: Source email address to send notifications from
+  StripeAPIKey:
+    Type: String
+    Description: Stripe API key
+
+Mappings:
+  SchedulerToggle:
+    Toggle:
+      'true': true
+      'false': false
+
+Resources:
+  dataFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: cmd/lambda/data/
+      Description: function responsible for fetching and storing tournament data
+      Environment:
+        Variables:
+          DATA_BUCKET_NAME:
+            Ref: DataBucket
+          NUMERAI_PUBLIC_ID:
+            Ref: NumeraiPublicID
+          NUMERAI_SECRET_KEY:
+            Ref: NumeraiSecretKey
+      Events:
+        ScheduleEvent:
+          Type: Schedule
+          Properties:
+            Description: periodic check for new tournament data
+            Enabled:
+              Fn::FindInMap:
+                - SchedulerToggle
+                - Toggle
+                - Ref: SchedulerEnabled
+            Schedule: cron(0 12 * * ? *) # UPDATE TO RUN HOURLY ON SATURDAY / SUNDAY
+      Handler: main.handler
+      MemorySize: 1024
+      Runtime: python3.7
+      Timeout: 120
+  usersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: cmd/lambda/users/
+      Description: function responsible adding new users to the application
+      Environment:
+        Variables:
+          STRIPE_API_KEY:
+            Ref: StripeAPIKey
+          USERS_TABLE_NAME:
+            Ref: usersTable
+      Events:
+        UserEvent:
+          Type: Api
+          Properties:
+            Method: POST
+            Path: /users
+            RestApiId:
+              Ref: api
+      Handler: main.handler
+      MemorySize: 256
+      Runtime: python3.7
+      Timeout: 15
+  starterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: cmd/lambda/starter/
+      Description: function responsible triggering the application pipeline
+      Environment:
+        Variables:
+          USERS_TABLE_NAME:
+            Ref: usersTable
+          AWS_ACCOUNT_ID:
+            Ref: AWS::AccountId
+          AWS_REGION:
+            Ref: AWS::Region
+          STEP_FUNCTION_ARN:
+            Ref: pipeline
+      Events:
+        UserEvent:
+          Type: Api
+          Properties:
+            Method: POST
+            Path: /models
+            RestApiId:
+              Ref: api
+      Handler: main.handler
+      MemorySize: 1024
+      Runtime: python3.7
+      Timeout: 60
+  messageFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: cmd/lambda/message/
+      Description: function responsible handling State Machine success messaging
+      Environment:
+        Variables:
+          SOURCE_EMALI:
+            Ref: SourceEmail
+      Handler: main.handler
+      MemorySize: 256
+      Runtime: python3.7
+      Timeout: 15
+  alertFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: cmd/lambda/alert/
+      Description: function responsible handling State Machine error messaging
+      Environment:
+        Variables:
+          SOURCE_EMALI:
+            Ref: SourceEmail
+      Handler: main.handler
+      MemorySize: 256
+      Runtime: python3.7
+      Timeout: 15
+  usersTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      PrimaryKey:
+        Name: api_key
+        Type: String
+  api:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - sagemaker:CreateTrainingJob
+                - sagemaker:CreateTransformJob
+              Resource: arn:aws:sagemaker:*
+
+Outputs:
+  UsersAPIEndpoint:
+    Description: Endpoint for receiving add user requests
+    Value:
+      Fn::Sub: https://${api}.execute-api.${AWS::Region}.amazonaws.com/prod/users
+  ModelsAPIEndpoint:
+    Description: Endpoint for receiving model resources
+    Value:
+      Fn::Sub: https://${api}.execute-api.${AWS::Region}.amazonaws.com/prod/models

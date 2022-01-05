@@ -3,6 +3,7 @@ import os
 import time
 import boto3
 import docker
+from step_function import get_definition
 
 
 docker_file_content = '''
@@ -79,10 +80,33 @@ def handler(event, context):
         tag='latest',
     )
 
-    step_function = boto3.client('stepfunctions')
+    step_functions = boto3.client('stepfunctions')
+
+	definition = get_definition(
+		os.environ['SAGEMAKER_ROLE_ARN'],
+		image_name,
+		os.environ['DATA_BUCKET_NAME'] + '/data/training.parquet',
+		os.environ['DATA_BUCKET_NAME'] + '/' + user_id + '/output', # TEMP
+		os.environ['DATA_BUCKET_NAME'] + '/data/predicting.parquet',
+		os.environ['DATA_BUCKET_NAME'] + '/' + user_id + '/output', # TEMP
+	)
+
+	try:
+		state_machine = step_functions.create_state_machine(
+			name='', # TEMP
+			definition=definition,
+			roleArn=os.environ['STEP_FUNCTION_ROLE_ARN'],
+		)
+	except Exception as e:
+        return {
+            Body: str(e),
+            StatusCode: 500,
+            IsBase64Encoded: False,
+        }
+
     try:
-        step_function.start_execution(
-            stateMachineArn=os.environ['STATE_MACHINE_ARN'],
+        state_machine.start_execution(
+            stateMachineArn=state_machine['stateMachineArn']],
             input=json.dumps({
                 'email': email,
                 'user_id': user_id,

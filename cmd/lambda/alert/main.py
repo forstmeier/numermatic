@@ -32,3 +32,14 @@ def handler(event, context):
             error: str(e),
             status: 'error',
         }
+
+    ecr = boto3.client('ecr')
+    try:
+        delete_repository_response = ecr.delete_repository(
+            repositoryName=event['repository_name'],
+        )
+    except Exception as e:
+        return {
+            error: str(e),
+            status: 'error',
+        }

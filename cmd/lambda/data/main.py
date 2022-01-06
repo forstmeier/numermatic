@@ -1,5 +1,5 @@
-import numerapi
 import boto3
+import numerapi
 
 
 tournament_file_name = 'training.parquet'

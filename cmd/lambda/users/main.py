@@ -1,8 +1,8 @@
 import json
 import os
+import uuid
 import boto3
 import stripe
-import uuid
 
 
 def handler(event, context):

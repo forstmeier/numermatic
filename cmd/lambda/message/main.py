@@ -2,6 +2,8 @@ import boto3
 
 
 def handler(event, context):
+	print('event:', event)
+
     s3 = boto3.client('s3')
     try:
         presigned_urls = get_presigned_urls(

@@ -2,6 +2,8 @@ import boto3
 
 
 def handler(event, context):
+	print('event:', event)
+
     ses = boto3.client('ses')
     try:
         body = '''

@@ -2,9 +2,11 @@ import numerapi
 import boto3
 
 
-tournament_file_name = 'numerai_tournament_data.parquet'
+tournament_file_name = 'training.parquet'
 
 def handler(event, context):
+	print('event:', event)
+
     api = numerapi.NumerAPI(
         public_id=config_data[os.getenv('PUBLIC_ID')],
         secret_key=config_data[os.getenv('SECRET_KEY')],

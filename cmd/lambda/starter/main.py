@@ -23,6 +23,8 @@ ENV SAGEMAKER_PROGRAM model.py
 
 
 def handler(event, context):
+	print('event:', event)
+
     body = email.parser.BytesParser().parsebytes(event['Body'])
 
     for part in body.get_payload():
@@ -82,18 +84,20 @@ def handler(event, context):
 
     step_functions = boto3.client('stepfunctions')
 
+	timestamp = str(int(time.time()))
+
 	definition = get_definition(
 		os.environ['SAGEMAKER_ROLE_ARN'],
 		image_name,
 		os.environ['DATA_BUCKET_NAME'] + '/data/training.parquet',
-		os.environ['DATA_BUCKET_NAME'] + '/' + user_id + '/output', # TEMP
+		os.environ['DATA_BUCKET_NAME'] + '/' + user_id + '/' + timestamp,
 		os.environ['DATA_BUCKET_NAME'] + '/data/predicting.parquet',
-		os.environ['DATA_BUCKET_NAME'] + '/' + user_id + '/output', # TEMP
+		os.environ['DATA_BUCKET_NAME'] + '/' + user_id + '/' + timestamp,
 	)
 
 	try:
 		state_machine = step_functions.create_state_machine(
-			name='', # TEMP
+			name=user_id + '_' + timestamp,
 			definition=definition,
 			roleArn=os.environ['STEP_FUNCTION_ROLE_ARN'],
 		)

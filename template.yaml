@@ -177,14 +177,6 @@ Resources:
     Type: AWS::Serverless::Api
     Properties:
       StageName: prod
-      Policies:
-        - Version: '2012-10-17' 
-          Statement:
-            - Effect: Allow
-              Action:
-                - sagemaker:CreateTrainingJob
-                - sagemaker:CreateTransformJob
-              Resource: arn:aws:sagemaker:*
 
 Outputs:
   UsersAPIEndpoint:

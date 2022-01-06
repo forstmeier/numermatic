@@ -6,3 +6,6 @@ etc/data/
 
 # random resources
 etc/storage/
+
+# SAM-generated resources
+.aws-sam/

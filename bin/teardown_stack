@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+users_table_name=$( aws cloudformation describe-stacks --stack-name numermatic --query 'Stacks[0].Outputs[?OutputKey==`UsersTableName`].OutputValue' --output text )
+
+aws dynamodb scan \
+	--table-name $users_table_name \
+	> etc/data/users_table.json
+
+aws cloudformation delete-stack --stack-name numermatic

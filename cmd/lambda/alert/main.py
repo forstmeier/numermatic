@@ -5,6 +5,8 @@ def handler(event, context):
 	print('event:', event)
 
     ses = boto3.client('ses')
+    ecr = boto3.client('ecr')
+
     try:
         body = '''
         Error: {0}
@@ -24,24 +26,19 @@ def handler(event, context):
                 }
             },
         )
+		print('send_email_response:', send_email_response)
 
-        return {
-            status: 'error',
-        }
-
-    except Exception as e:
-        return {
-            error: str(e),
-            status: 'error',
-        }
-
-    ecr = boto3.client('ecr')
-    try:
         delete_repository_response = ecr.delete_repository(
             repositoryName=event['repository_name'],
         )
+		print('delete_repository_response:', delete_repository_response)
+
     except Exception as e:
         return {
             error: str(e),
             status: 'error',
         }
+
+	return {
+		status: 'success',
+	}

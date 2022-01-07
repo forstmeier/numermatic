@@ -15,21 +15,21 @@ def handler(event, context):
     if not api.check_new_round():
         return None
 
+    s3 = boto3.client('s3')
+
     try:
         api.download_dataset(
             filename=tournament_file_name,
             dest_path=filepath,
         )
-    except Exception as e:
-        return e
 
-    s3 = boto3.client('s3')
-    try:
         upload_file_response = s3.upload_file(
             tournament_file_name,
             os.getenv('DATA_BUCKET_NAME'),
             'data/'+tournament_file_name,
         )
+		print('upload_file_response:', upload_file_response)
+
     except Exception as e:
         return e
 

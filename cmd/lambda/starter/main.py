@@ -82,8 +82,6 @@ def handler(event, context):
         tag='latest',
     )
 
-    step_functions = boto3.client('stepfunctions')
-
 	timestamp = str(int(time.time()))
 
 	definition = get_definition(
@@ -95,20 +93,15 @@ def handler(event, context):
 		os.environ['DATA_BUCKET_NAME'] + '/' + user_id + '/' + timestamp,
 	)
 
+    step_functions = boto3.client('stepfunctions')
+
 	try:
 		state_machine = step_functions.create_state_machine(
 			name=user_id + '_' + timestamp,
 			definition=definition,
 			roleArn=os.environ['STEP_FUNCTION_ROLE_ARN'],
 		)
-	except Exception as e:
-        return {
-            Body: str(e),
-            StatusCode: 500,
-            IsBase64Encoded: False,
-        }
 
-    try:
         state_machine.start_execution(
             stateMachineArn=state_machine['stateMachineArn']],
             input=json.dumps({
@@ -118,6 +111,7 @@ def handler(event, context):
                 'image_name': image_name,
             }),
         )
+
     except Exception as e:
         return {
             Body: str(e),

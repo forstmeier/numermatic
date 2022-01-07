@@ -15,6 +15,8 @@ def handler(event, context):
 
     body = event['Body']
 
+    dynamodb = boto3.client('dynamodb')
+
     try:
         create_payment_method_response = stripe.PaymentMethod.create(
             type="card",
@@ -25,38 +27,16 @@ def handler(event, context):
                 "cvc": body['cvc'],
             },
         )
-    except Exception as e:
-        return {
-            Body: str(e),
-            StatusCode: 500,
-            IsBase64Encoded: False,
-        }
 
-    try:
         create_customer_response = stripe.Customer.create(
             email=body['email'],
         )
-    except Exception as e:
-        return {
-            Body: str(e),
-            StatusCode: 500,
-            IsBase64Encoded: False,
-        }
 
-    try:
         attach_method_response = stripe.PaymentMethod.attach(
             create_payment_method_response['id'],
             customer=create_customer_response['id'],
         )
-    except Exception as e:
-        return {
-            Body: str(e),
-            StatusCode: 500,
-            IsBase64Encoded: False,
-        }
 
-    dynamodb = boto3.client('dynamodb')
-    try:
         put_item_response = dynamodb.put_item(
             TableName=os.getenv('USERS_TABLE_NAME'),
             Item={
@@ -74,6 +54,7 @@ def handler(event, context):
                 },
             }
         )
+
     except Exception as e:
         return {
             Body: str(e),

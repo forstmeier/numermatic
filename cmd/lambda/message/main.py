@@ -5,6 +5,9 @@ def handler(event, context):
 	print('event:', event)
 
     s3 = boto3.client('s3')
+    ses = boto3.client('ses')
+    ecr = boto3.client('ecr')
+
     try:
         presigned_urls = get_presigned_urls(
             s3,
@@ -14,14 +17,7 @@ def handler(event, context):
                 event['validations_file_key'],                
             ],
         )
-    except Exception as e:
-        return {
-            error: str(e),
-            status: 'error',
-        }
 
-    ses = boto3.client('ses')
-    try:
         body = '''
         Download your files from the presigned URLs below:
 
@@ -44,22 +40,13 @@ def handler(event, context):
                 }
             },
         )
+		print('send_email_response:', send_email_response)
 
-        return {
-            status: 'success',
-        }
-
-    except Exception as e:
-        return {
-            error: str(e),
-            status: 'error',
-        }
-
-    ecr = boto3.client('ecr')
-    try:
         delete_repository_response = ecr.delete_repository(
             repositoryName=event['repository_name'],
         )
+		print('delete_repository_response:', delete_repository_response)
+
     except Exception as e:
         return {
             error: str(e),

@@ -96,15 +96,11 @@ Resources:
             Ref: usersTable
           AWS_ACCOUNT_ID:
             Ref: AWS::AccountId
-          AWS_REGION:
-            Ref: AWS::Region
-          STEP_FUNCTION_ARN:
-            Ref: pipeline
           DATA_BUCKET_NAME:
             Ref: DataBucket
           SAGEMAKER_ROLE_ARN:
             Fn::GetAtt:
-              - sagemakerRole
+              - sageMakerRole
               - Arn
           STEP_FUNCTION_ROLE_ARN: StepFunctionsLambdaRole
       Events:
@@ -122,6 +118,13 @@ Resources:
   sageMakerRole:
     Type: AWS::IAM::Role
     Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole    
       Policies:
         - PolicyDocument:
             Version: '2012-10-17'
@@ -141,6 +144,8 @@ Resources:
                   - ecr:BatchGetImage
                 Resource: "*"
                 Effect: Allow
+          PolicyName:
+            Fn::Sub: numermatic-sagemaker-policy
   messageFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -179,6 +184,9 @@ Resources:
       StageName: prod
 
 Outputs:
+  UsersTableName:
+    Value:
+      Ref: usersTable
   UsersAPIEndpoint:
     Description: Endpoint for receiving add user requests
     Value:

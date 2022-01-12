@@ -1,3 +1,5 @@
+import json
+import os
 import boto3
 
 
@@ -8,38 +10,41 @@ def handler(event, context):
 	s3 = boto3.client('s3')
 
 	try:
-		query_response = dynamodb.query(
+		get_item_response = dynamodb.get_item(
 			TableName=os.getenv('USERS_TABLE_NAME'),
-			KeyConditionExpression='api_key = :api_key',
-			ExpressionAttributeValues={
-				':api_key': {
-					'S': event['body']['api_key'],
+			Key={
+				'api_key': {
+					'S': event['headers']['numermatic-api-key'],
 				},
 			},
 		)
-		print('query_response:', query_response)
+		print('get_item_response:', get_item_response)
 
-		user_id = query_response['Items'][0]['id']['S']
+		user_id = get_item_response['Item']['id']['S']
 
-		generate_presigned_post_response = s3.generate_presigned_post(
-			Bucket=os.getenv('MODELS_BUCKET_NAME'),
-			Key=user_id+'/models/model.zip',
-			Expiration=900,
+		generate_presigned_url_response = s3.generate_presigned_url(
+			ClientMethod='put_object',
+			Params={
+				'Bucket':os.getenv('MODELS_BUCKET_NAME'),
+				'Key': user_id+'/models/model.zip',
+			},
+			ExpiresIn=900,
 		)
-		print('generate_presigned_post_response:', generate_presigned_post_response)
+		print('generate_presigned_url_response:', generate_presigned_url_response)
 
-	except Exception as e:
 		return {
-			Body: str(e),
-			StatusCode: 500,
-			IsBase64Encoded: False,
+			'body': json.dumps({
+				'message': 'success',
+				'url': generate_presigned_url_response,
+			}),
+			'statusCode': 200,
+			'isBase64Encoded': False,
 		}
 
-	return {
-		Body: json.dump({
-			'message': 'success',
-			'url': generate_presigned_post_response['url'],
-		})
-		StatusCode: 500,
-		IsBase64Encoded: False,
-	}
+	except Exception as e:
+		print('exception:', e)
+		return {
+			'body': str(e),
+			'statusCode': 500,
+			'isBase64Encoded': False,
+		}

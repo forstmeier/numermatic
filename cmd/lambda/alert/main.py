@@ -1,3 +1,4 @@
+import os
 import boto3
 
 
@@ -33,12 +34,13 @@ def handler(event, context):
         )
 		print('delete_repository_response:', delete_repository_response)
 
-    except Exception as e:
-        return {
-            error: str(e),
-            status: 'error',
-        }
+		return {
+			'status': 'success',
+		}
 
-	return {
-		status: 'success',
-	}
+    except Exception as e:
+		print('exception:', e)
+        return {
+            'error': str(e),
+            'status': 'error',
+        }

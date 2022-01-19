@@ -8,12 +8,11 @@ import stripe
 def handler(event, context):
     print('event:', event)
 
-    api_key = uuid.uuid4()
     user_id = uuid.uuid4()
 
     stripe.api_key = os.getenv('STRIPE_API_KEY')
 
-    body = event['Body']
+    body = event['body']
 
     dynamodb = boto3.client('dynamodb')
 
@@ -40,14 +39,11 @@ def handler(event, context):
         put_item_response = dynamodb.put_item(
             TableName=os.getenv('USERS_TABLE_NAME'),
             Item={
-                'api_key': {
-                    'S': api_key,
+                'id': {
+                    'S': user_id,
                 },
                 'email': {
                     'S': body['email'],
-                },
-                'user_id': {
-                    'S': user_id,
                 },
                 'stripe_customer_id': {
                     'S': create_customer_response['id'],
@@ -55,18 +51,19 @@ def handler(event, context):
             }
         )
 
-    except Exception as e:
-        return {
-            Body: str(e),
-            StatusCode: 500,
-            IsBase64Encoded: False,
-        }
+		return {
+			'body': json.dumps({
+				message: 'successfully created user',
+				user_id: user_id,
+			}),
+			'statusCode': 200,
+			'isBase64Encoded': False,
+		}
 
-    return {
-        Body: json.dumps({
-            message: 'successfully created user',
-            api_key: api_key,
-        }),
-        StatusCode: 200,
-        IsBase64Encoded: False,
-    }
+    except Exception as e:
+		print('exception:', e)
+        return {
+            'body': str(e),
+            'statusCode': 500,
+            'isBase64Encoded': False,
+        }

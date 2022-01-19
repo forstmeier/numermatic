@@ -26,6 +26,9 @@ Parameters:
   StripeAPIKey:
     Type: String
     Description: Stripe API key
+  CertificateARN:
+    Type: String
+    Description: AWS managed certificate ARN
 
 Mappings:
   SchedulerToggle:
@@ -34,6 +37,33 @@ Mappings:
       'false': false
 
 Resources:
+  uploadsBucket:
+    Type: AWS::S3::Bucket
+    Properties:      
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 1
+            Status: Enabled
+      BucketName:
+        Fn::Sub: "uploads-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+  modelsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 1
+            Status: Enabled
+      BucketName:
+        Fn::Sub: "models-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+  outputsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 1
+            Status: Enabled
+      BucketName:
+        Fn::Sub: "outputs-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
   dataFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -66,7 +96,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: cmd/lambda/users/
-      Description: function responsible adding new users to the application
+      Description: function responsible for adding new users to the application
       Environment:
         Variables:
           STRIPE_API_KEY:
@@ -85,102 +115,97 @@ Resources:
       MemorySize: 256
       Runtime: python3.7
       Timeout: 15
-  starterFunction:
+  modelsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: cmd/lambda/starter/
-      Description: function responsible triggering the application pipeline
+      CodeUri: cmd/lambda/models/
+      Description: function responsible generating model upload URLs
       Environment:
         Variables:
+          MODELS_BUCKET_NAME:
+            Fn::Sub: "models-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
           USERS_TABLE_NAME:
             Ref: usersTable
-          AWS_ACCOUNT_ID:
-            Ref: AWS::AccountId
-          DATA_BUCKET_NAME:
-            Ref: DataBucket
-          SAGEMAKER_ROLE_ARN:
-            Fn::GetAtt:
-              - sageMakerRole
-              - Arn
-          STEP_FUNCTION_ROLE_ARN: StepFunctionsLambdaRole
       Events:
-        UserEvent:
+        ModelEvent:
           Type: Api
           Properties:
-            Method: POST
+            Method: GET
             Path: /models
             RestApiId:
               Ref: api
       Handler: main.handler
-      MemorySize: 1024
+      MemorySize: 256
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: 
+                Fn::GetAtt:
+                  - usersTable
+                  - Arn
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: 
+                Fn::Sub: "arn:aws:s3:::${AWS::StackName}-${AWS::Region}-${AWS::AccountId}*"
+      Runtime: python3.7
+      Timeout: 15
+  starterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: cmd/lambda/starter/
+      Description: function responsible for parsing uploads and starting model training flow
+      Environment:
+        Variables:
+          MODELS_BUCKET_NAME:
+            Fn::Sub: "models-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+      Events:
+        starterEvent:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: uploadsBucket
+            Events: s3:ObjectCreated:*
+      Handler: main.handler
+      MemorySize: 256
+      Runtime: python3.7
+      Timeout: 30
+  builderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: cmd/lambda/builder/
+      Description: function responsible for training and inferring models
+      Environment:
+        Variables:
+          OUTPUTS_BUCKET_NAME:
+            Fn::Sub: "outputs-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+      Events:
+        builderEvent:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: modelsBucket
+            Events: s3:ObjectCreated:*
+      Handler: main.handler
+      MemorySize: 528
       Runtime: python3.7
       Timeout: 60
-  sageMakerRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: sagemaker.amazonaws.com
-            Action: sts:AssumeRole    
-      Policies:
-        - PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Action:
-                  - cloudwatch:PutMetricData
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - logs:CreateLogGroup
-                  - logs:DescribeLogStreams
-                  - s3:GetObject
-                  - s3:PutObject
-                  - s3:ListBucket
-                  - ecr:GetAuthorizationToken
-                  - ecr:BatchCheckLayerAvailability
-                  - ecr:GetDownloadUrlForLayer
-                  - ecr:BatchGetImage
-                Resource: "*"
-                Effect: Allow
-          PolicyName:
-            Fn::Sub: numermatic-sagemaker-policy
-  messageFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: cmd/lambda/message/
-      Description: function responsible handling State Machine success messaging
-      Environment:
-        Variables:
-          SOURCE_EMALI:
-            Ref: SourceEmail
-      Handler: main.handler
-      MemorySize: 256
-      Runtime: python3.7
-      Timeout: 15
-  alertFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: cmd/lambda/alert/
-      Description: function responsible handling State Machine error messaging
-      Environment:
-        Variables:
-          SOURCE_EMALI:
-            Ref: SourceEmail
-      Handler: main.handler
-      MemorySize: 256
-      Runtime: python3.7
-      Timeout: 15
   usersTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
       PrimaryKey:
-        Name: api_key
+        Name: id
         Type: String
   api:
     Type: AWS::Serverless::Api
     Properties:
+      Domain:
+        CertificateArn:
+          Ref: CertificateARN
+        DomainName: numermatic.com
       StageName: prod
 
 Outputs:

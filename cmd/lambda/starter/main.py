@@ -1,128 +1,42 @@
-import email.parser
-import os
-import time
+import zipfile
 import boto3
-import docker
-from step_function import get_definition
-
-
-docker_file_content = '''
-ARG REGION=us-east-1
-
-FROM 683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:0.23-1-cpu-py3
-
-ENV PATH="/opt/ml/code:${PATH}"
-
-COPY /requirements.txt /opt/ml/code
-COPY /model.py /opt/ml/code
-
-RUN pip install -r /opt/ml/code/requirements.txt /opt/ml/code/model.py
-
-ENV SAGEMAKER_PROGRAM model.py
-'''
 
 
 def handler(event, context):
 	print('event:', event)
 
-    body = email.parser.BytesParser().parsebytes(event['Body'])
+    bucket = event['Records'][0]['s3']['bucket']['name']
+	key = event['Records'][0]['s3']['object']['key']
 
-    for part in body.get_payload():
-        part_key = part.get_param('name', header='content-disposition')
-        if part_key == 'api_key':
-            api_key = part.get_payload(decode=True)
-        elif part_key == 'model_file':
-            model_file_content = part.get_payload(decode=True)
-        elif part_key == 'requirements_file':
-            requirements_file_content = part.get_payload(decode=True)
+	key_split = key.split('/')
 
-    dynamodb = boto3.client('dynamodb')
-    get_item_response = dynamodb.get_item(
-        TableName=os.getenv('USERS_TABLE_NAME'),
-        Key={
-            'api_key': {
-                'S': api_key
-            }
-        }
-    )
+	user_id = key_split[0]
+	execution_id = key_split[1]
 
-    email = get_item_response['Item']['email']['S']
-    user_id = get_item_response['Item']['user_id']['S']
-    stripe_customer_id = get_item_response['Item']['stripe_customer_id']['S']
+	s3 = boto3.client('s3')
 
-    model_file = open('model.py', 'a')
-    model_file.write(model_file_content.decode('utf-8'))
-    model_file.close()
+	local_file = '/tmp/model.zip'
 
-    requirements_file = open('requirements.txt', 'a')
-    requirements_file.write(requirements_file_content.decode('utf-8'))
-    requirements_file.close()
-
-    docker_file = open('Dockerfile', 'w')
-    docker_file.write(docker_file_content)
-    docker_file.close()
-
-    image_name = '{0}-{1}'.format(user_id, str(time.time()))
-
-    image = docker.build(
-        path='.',
-        dockerfile='Dockerfile',
-        tag=image_name+':latest',
-        buildargs={
-            'REGION': os.environ['AWS_REGION'],
-        }
-    )
-
-    docker.push(
-        repository='{0}.dkr.ecr.{1}.amazonaws.com/{2}'.format(
-            os.environ['AWS_ACCOUNT_ID'], 
-            os.environ['AWS_REGION'], 
-            image_name,
-        ),
-        tag='latest',
-    )
-
-	timestamp = str(int(time.time()))
-
-	definition = get_definition(
-		os.environ['SAGEMAKER_ROLE_ARN'],
-		image_name,
-		os.environ['DATA_BUCKET_NAME'] + '/data/training.parquet',
-		os.environ['DATA_BUCKET_NAME'] + '/' + user_id + '/' + timestamp,
-		os.environ['DATA_BUCKET_NAME'] + '/data/predicting.parquet',
-		os.environ['DATA_BUCKET_NAME'] + '/' + user_id + '/' + timestamp,
+	s3.download_file(
+		Bucket=bucket,
+		Key=key,
+		Filename=local_file,
 	)
 
-    step_functions = boto3.client('stepfunctions')
+	zip_ref = zipfile.ZipFile(local_file)
+	zip_ref.extractall(dir_name)
+	zip_ref.close()
 
-	try:
-		state_machine = step_functions.create_state_machine(
-			name=user_id + '_' + timestamp,
-			definition=definition,
-			roleArn=os.environ['STEP_FUNCTION_ROLE_ARN'],
-		)
+	s3.upload_file(
+		Filename='/tmp/model.py',
+		Bucket=bucket,
+		Key='{}/{}/models/model.py'.format(user_id, execution_id),
+	)
 
-        state_machine.start_execution(
-            stateMachineArn=state_machine['stateMachineArn']],
-            input=json.dumps({
-                'email': email,
-                'user_id': user_id,
-                'stripe_customer_id': stripe_customer_id,
-                'image_name': image_name,
-            }),
-        )
+	s3.upload_file(
+		Filename='/tmp/requirements.txt',
+		Bucket=bucket,
+		Key='{}/{}/models/requirements.txt'.format(user_id, execution_id),
+	)
 
-    except Exception as e:
-        return {
-            Body: str(e),
-            StatusCode: 500,
-            IsBase64Encoded: False,
-        }
-
-    return {
-        Body: json.dumps({
-            message: 'successfully started pipeline',
-        }),
-        StatusCode: 200,
-        IsBase64Encoded: False,
-    }
+	return None

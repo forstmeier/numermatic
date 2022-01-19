@@ -5,7 +5,7 @@ import boto3
 def handler(event, context):
 	print('event:', event)
 
-    bucket = event['Records'][0]['s3']['bucket']['name']
+    uploads_bucket = event['Records'][0]['s3']['bucket']['name']
 	key = event['Records'][0]['s3']['object']['key']
 
 	key_split = key.split('/')
@@ -19,7 +19,7 @@ def handler(event, context):
 
 	try:
 		s3.download_file(
-			Bucket=bucket,
+			Bucket=uploads_bucket,
 			Key=key,
 			Filename=local_file,
 		)
@@ -28,15 +28,17 @@ def handler(event, context):
 		zip_ref.extractall(dir_name)
 		zip_ref.close()
 
+		models_bucket = os.getenv('MODELS_BUCKET_NAME')
+
 		s3.upload_file(
 			Filename='/tmp/model.py',
-			Bucket=bucket,
+			Bucket=models_bucket,
 			Key='{}/{}/models/model.py'.format(user_id, execution_id),
 		)
 
 		s3.upload_file(
 			Filename='/tmp/requirements.txt',
-			Bucket=bucket,
+			Bucket=models_bucket,
 			Key='{}/{}/models/requirements.txt'.format(user_id, execution_id),
 		)
 

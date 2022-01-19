@@ -162,6 +162,10 @@ Resources:
         Variables:
           MODELS_BUCKET_NAME:
             Fn::Sub: "models-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+          USERS_TABLE_NAME:
+            Ref: usersTable
+          SOURCE_EMAIL:
+            Ref: SourceEmail
       Events:
         starterEvent:
           Type: S3
@@ -182,6 +186,8 @@ Resources:
         Variables:
           OUTPUTS_BUCKET_NAME:
             Fn::Sub: "outputs-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+          DATA_BUCKET_NAME:
+            Ref: DataBucket
       Events:
         builderEvent:
           Type: S3

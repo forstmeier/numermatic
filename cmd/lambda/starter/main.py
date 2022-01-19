@@ -45,4 +45,34 @@ def handler(event, context):
 	except Exception as e:
 		print('exception:', e)
 
+		get_item_response = dynamodb.get_item(
+			TableName=os.getenv('USERS_TABLE_NAME'),
+			Key={
+				'id': {
+					'S': event['headers']['numermatic-user-id'],
+				},
+			},
+		)
+		print('get_item_response:', get_item_response)
+
+		email = get_item_response['Item']['email']['S']
+
+		ses = boto3.client('ses')
+
+        send_email_response = ses.send_email(
+            Source=os.getenv("SOURCE_EMAIL"),
+            Destination=email,
+            Message={
+                Subject: {
+                    Data: 'Your model has encountered an error!',
+                },
+                Body: {
+                    Text: {
+                        Data: 'Contact the project owner for more information. Execution ID: {}'.format(execution_id),
+                    }
+                }
+            },
+        )
+		print('send_email_response:', send_email_response)
+
 	return None

@@ -38,6 +38,7 @@ def handler(event, context):
 			'body': json.dumps({
 				'message': 'success',
 				'url': generate_presigned_url_response,
+				'execution_id': execution_id,
 			}),
 			'statusCode': 200,
 			'isBase64Encoded': False,

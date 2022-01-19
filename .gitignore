@@ -9,3 +9,7 @@ etc/storage/
 
 # SAM-generated resources
 .aws-sam/
+
+# testing files
+model.zip
+model.py

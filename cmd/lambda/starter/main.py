@@ -17,26 +17,30 @@ def handler(event, context):
 
 	local_file = '/tmp/model.zip'
 
-	s3.download_file(
-		Bucket=bucket,
-		Key=key,
-		Filename=local_file,
-	)
+	try:
+		s3.download_file(
+			Bucket=bucket,
+			Key=key,
+			Filename=local_file,
+		)
 
-	zip_ref = zipfile.ZipFile(local_file)
-	zip_ref.extractall(dir_name)
-	zip_ref.close()
+		zip_ref = zipfile.ZipFile(local_file)
+		zip_ref.extractall(dir_name)
+		zip_ref.close()
 
-	s3.upload_file(
-		Filename='/tmp/model.py',
-		Bucket=bucket,
-		Key='{}/{}/models/model.py'.format(user_id, execution_id),
-	)
+		s3.upload_file(
+			Filename='/tmp/model.py',
+			Bucket=bucket,
+			Key='{}/{}/models/model.py'.format(user_id, execution_id),
+		)
 
-	s3.upload_file(
-		Filename='/tmp/requirements.txt',
-		Bucket=bucket,
-		Key='{}/{}/models/requirements.txt'.format(user_id, execution_id),
-	)
+		s3.upload_file(
+			Filename='/tmp/requirements.txt',
+			Bucket=bucket,
+			Key='{}/{}/models/requirements.txt'.format(user_id, execution_id),
+		)
+
+	except Exception as e:
+		print('exception:', e)
 
 	return None

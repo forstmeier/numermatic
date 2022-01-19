@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 import boto3
 
 
@@ -13,20 +14,21 @@ def handler(event, context):
 		get_item_response = dynamodb.get_item(
 			TableName=os.getenv('USERS_TABLE_NAME'),
 			Key={
-				'api_key': {
-					'S': event['headers']['numermatic-api-key'],
+				'id': {
+					'S': event['headers']['numermatic-user-id'],
 				},
 			},
 		)
 		print('get_item_response:', get_item_response)
 
 		user_id = get_item_response['Item']['id']['S']
+	    execution_id = uuid.uuid4()
 
 		generate_presigned_url_response = s3.generate_presigned_url(
 			ClientMethod='put_object',
 			Params={
 				'Bucket':os.getenv('MODELS_BUCKET_NAME'),
-				'Key': user_id+'/models/model.zip',
+				'Key': user_id+'/'+execution_id+'/models/model.zip',
 			},
 			ExpiresIn=900,
 		)

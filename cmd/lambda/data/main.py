@@ -1,3 +1,4 @@
+import os
 import boto3
 import numerapi
 
@@ -31,6 +32,7 @@ def handler(event, context):
 		print('upload_file_response:', upload_file_response)
 
     except Exception as e:
+		print('exception:', e)
         return e
 
     return None

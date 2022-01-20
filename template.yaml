@@ -45,7 +45,7 @@ Resources:
           - ExpirationInDays: 1
             Status: Enabled
       BucketName:
-        Fn::Sub: "uploads-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+        Fn::Sub: "${AWS::StackName}-uploads-${AWS::Region}-${AWS::AccountId}"
   modelsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -54,7 +54,7 @@ Resources:
           - ExpirationInDays: 1
             Status: Enabled
       BucketName:
-        Fn::Sub: "models-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+        Fn::Sub: "${AWS::StackName}-models-${AWS::Region}-${AWS::AccountId}"
   outputsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -123,7 +123,7 @@ Resources:
       Environment:
         Variables:
           MODELS_BUCKET_NAME:
-            Fn::Sub: "models-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+            Fn::Sub: "${AWS::StackName}-models-${AWS::Region}-${AWS::AccountId}"
           USERS_TABLE_NAME:
             Ref: usersTable
       Events:
@@ -150,7 +150,7 @@ Resources:
               Action:
                 - s3:PutObject
               Resource: 
-                Fn::Sub: "arn:aws:s3:::${AWS::StackName}-${AWS::Region}-${AWS::AccountId}*"
+                Fn::Sub: "arn:aws:s3:::${AWS::StackName}-models-${AWS::Region}-${AWS::AccountId}*"
       Runtime: python3.7
       Timeout: 15
   starterFunction:
@@ -161,7 +161,7 @@ Resources:
       Environment:
         Variables:
           MODELS_BUCKET_NAME:
-            Fn::Sub: "models-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+            Fn::Sub: "${AWS::StackName}-models-${AWS::Region}-${AWS::AccountId}"
           USERS_TABLE_NAME:
             Ref: usersTable
           SOURCE_EMAIL:
@@ -185,7 +185,7 @@ Resources:
       Environment:
         Variables:
           OUTPUTS_BUCKET_NAME:
-            Fn::Sub: "outputs-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+            Fn::Sub: "${AWS::StackName}-outputs-${AWS::Region}-${AWS::AccountId}"
           DATA_BUCKET_NAME:
             Ref: DataBucket
       Events:
@@ -197,6 +197,14 @@ Resources:
             Events: s3:ObjectCreated:*
       Handler: main.handler
       MemorySize: 528
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: 
+                Fn::Sub: "arn:aws:s3:::${AWS::StackName}-outputs-${AWS::Region}-${AWS::AccountId}*"
       Runtime: python3.7
       Timeout: 60
   usersTable:

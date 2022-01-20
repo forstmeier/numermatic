@@ -63,7 +63,7 @@ Resources:
           - ExpirationInDays: 1
             Status: Enabled
       BucketName:
-        Fn::Sub: "outputs-${AWS::StackName}-${AWS::Region}-${AWS::AccountId}"
+        Fn::Sub: "${AWS::StackName}-outputs-${AWS::Region}-${AWS::AccountId}"
   dataFunction:
     Type: AWS::Serverless::Function
     Properties:

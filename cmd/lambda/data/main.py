@@ -3,7 +3,7 @@ import boto3
 import numerapi
 
 
-tournament_file_name = 'training.parquet'
+tournament_file_name = 'tournament.parquet'
 
 def handler(event, context):
 	print('event:', event)
@@ -27,7 +27,7 @@ def handler(event, context):
         upload_file_response = s3.upload_file(
             tournament_file_name,
             os.getenv('DATA_BUCKET_NAME'),
-            'data/'+tournament_file_name,
+            'tournament/'+tournament_file_name,
         )
 		print('upload_file_response:', upload_file_response)
 

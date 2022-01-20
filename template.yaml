@@ -188,6 +188,7 @@ Resources:
             Fn::Sub: "${AWS::StackName}-outputs-${AWS::Region}-${AWS::AccountId}"
           DATA_BUCKET_NAME:
             Ref: DataBucket
+          SAGEMAKER_ROLE_ARN: arn:aws:iam::account:role/AmazonSageMakerFullAccess
       Events:
         builderEvent:
           Type: S3

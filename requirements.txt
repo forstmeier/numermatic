@@ -1,2 +1,0 @@
-numerapi==2.8.1
-stripe==2.12.0

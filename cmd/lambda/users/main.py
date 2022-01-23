@@ -8,7 +8,7 @@ import stripe
 def handler(event, context):
     print('event:', event)
 
-    user_id = uuid.uuid4()
+    user_id = str(uuid.uuid4())
 
     stripe.api_key = os.getenv('STRIPE_API_KEY')
 

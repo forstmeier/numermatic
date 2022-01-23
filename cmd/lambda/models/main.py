@@ -22,12 +22,12 @@ def handler(event, context):
 		print('get_item_response:', get_item_response)
 
 		user_id = get_item_response['Item']['id']['S']
-	    execution_id = uuid.uuid4()
+		execution_id = str(uuid.uuid4())
 
 		generate_presigned_url_response = s3.generate_presigned_url(
 			ClientMethod='put_object',
 			Params={
-				'Bucket':os.getenv('MODELS_BUCKET_NAME'),
+				'Bucket':os.getenv('UPLOADS_BUCKET_NAME'),
 				'Key': user_id+'/'+execution_id+'/models/model.zip',
 			},
 			ExpiresIn=900,

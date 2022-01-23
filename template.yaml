@@ -6,7 +6,7 @@ Description: core infrastructure definitions
 Parameters:
   DataBucket:
     Type: String
-    Description: S3 bucket to store data
+    Description: S3 bucket to store train and inference data
   SchedulerEnabled:
     Type: String
     Description: Toggle scheduler on or off
@@ -45,7 +45,7 @@ Resources:
           - ExpirationInDays: 1
             Status: Enabled
       BucketName:
-        Fn::Sub: "${AWS::StackName}-uploads-${AWS::Region}-${AWS::AccountId}"
+        Fn::Sub: '${AWS::StackName}-uploads'
   modelsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -54,7 +54,7 @@ Resources:
           - ExpirationInDays: 1
             Status: Enabled
       BucketName:
-        Fn::Sub: "${AWS::StackName}-models-${AWS::Region}-${AWS::AccountId}"
+        Fn::Sub: '${AWS::StackName}-models'
   outputsBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -63,7 +63,7 @@ Resources:
           - ExpirationInDays: 1
             Status: Enabled
       BucketName:
-        Fn::Sub: "${AWS::StackName}-outputs-${AWS::Region}-${AWS::AccountId}"
+        Fn::Sub: '${AWS::StackName}-outputs'
   dataFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -122,8 +122,8 @@ Resources:
       Description: function responsible generating model upload URLs
       Environment:
         Variables:
-          MODELS_BUCKET_NAME:
-            Fn::Sub: "${AWS::StackName}-models-${AWS::Region}-${AWS::AccountId}"
+          UPLOADS_BUCKET_NAME:
+            Fn::Sub: '${AWS::StackName}-uploads'
           USERS_TABLE_NAME:
             Ref: usersTable
       Events:
@@ -150,7 +150,7 @@ Resources:
               Action:
                 - s3:PutObject
               Resource: 
-                Fn::Sub: "arn:aws:s3:::${AWS::StackName}-models-${AWS::Region}-${AWS::AccountId}*"
+                Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-uploads*'
       Runtime: python3.7
       Timeout: 15
   starterFunction:
@@ -160,8 +160,10 @@ Resources:
       Description: function responsible for parsing uploads and starting model training flow
       Environment:
         Variables:
+          # UPLOADS_BUCKET_NAME:
+          #   Fn::Sub: '${AWS::StackName}-uploads'
           MODELS_BUCKET_NAME:
-            Fn::Sub: "${AWS::StackName}-models-${AWS::Region}-${AWS::AccountId}"
+            Fn::Sub: '${AWS::StackName}-models'
           USERS_TABLE_NAME:
             Ref: usersTable
           SOURCE_EMAIL:
@@ -175,6 +177,19 @@ Resources:
             Events: s3:ObjectCreated:*
       Handler: main.handler
       MemorySize: 256
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: 
+                Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-uploads/*'
+            - Effect: Allow
+              Action:
+                - s3:PutObject
+              Resource: 
+                Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-models/*'
       Runtime: python3.7
       Timeout: 30
   builderFunction:
@@ -185,10 +200,21 @@ Resources:
       Environment:
         Variables:
           OUTPUTS_BUCKET_NAME:
-            Fn::Sub: "${AWS::StackName}-outputs-${AWS::Region}-${AWS::AccountId}"
+            Fn::Sub: '${AWS::StackName}-outputs'
           DATA_BUCKET_NAME:
             Ref: DataBucket
-          SAGEMAKER_ROLE_ARN: arn:aws:iam::account:role/AmazonSageMakerFullAccess
+          SAGEMAKER_ROLE_ARN:
+            Fn::GetAtt:
+              - sageMakerRole
+              - Arn
+          ENDER_FUNCTION_ARN:
+            Fn::GetAtt:
+              - enderFunction
+              - Arn
+          STEP_FUNCTION_ROLE_ARN:
+            Fn::GetAtt:
+              - stepFunctionRole
+              - Arn
       Events:
         builderEvent:
           Type: S3
@@ -199,15 +225,100 @@ Resources:
       Handler: main.handler
       MemorySize: 528
       Policies:
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
         - Version: '2012-10-17' 
           Statement:
             - Effect: Allow
               Action:
+                - s3:GetObject
+              Resource:
+                Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-models/*'
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource:
+                Fn::Sub: 'arn:aws:s3:::${DataBucket}/*'
+            - Effect: Allow
+              Action:
                 - s3:PutObject
               Resource: 
-                Fn::Sub: "arn:aws:s3:::${AWS::StackName}-outputs-${AWS::Region}-${AWS::AccountId}*"
+                Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
       Runtime: python3.7
       Timeout: 60
+  sageMakerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sagemaker.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+      Policies:
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource:
+                  Fn::Sub: 'arn:aws:s3:::${DataBucket}/*'
+          PolicyName: numermatic-sagemaker-policy
+  enderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: cmd/lambda/ender/
+      Description: function responsible for sending emails to users
+      Environment:
+        Variables:
+          OUTPUTS_BUCKET_NAME:
+            Fn::Sub: '${AWS::StackName}-outputs'
+          SOURCE_EMAIL:
+            Ref: SourceEmail
+      Events:
+        enderEvent:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: outputsBucket
+            Events: s3:ObjectCreated:*
+      Handler: main.handler
+      MemorySize: 256
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: 
+                Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
+      Runtime: python3.7
+      Timeout: 15
+  stepFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+    #   Policies:
+    #     - PolicyDocument:
+    #         Version: '2012-10-17'
+    #         Statement:
+    #           - Effect: Allow
+    #             Action:
+    #               - s3:GetObject
+    #             Resource:
+    #               Fn::Sub: 'arn:aws:s3:::${DataBucket}/*'
+    #       PolicyName: numermatic-step-function-policy
   usersTable:
     Type: AWS::Serverless::SimpleTable
     Properties:

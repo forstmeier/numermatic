@@ -10,7 +10,5 @@ etc/storage/
 # SAM-generated resources
 .aws-sam/
 
-# testing files
-model.zip
-model.py
-requirements.txt
+# test resources
+etc/test/

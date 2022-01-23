@@ -13,3 +13,4 @@ etc/storage/
 # testing files
 model.zip
 model.py
+requirements.txt

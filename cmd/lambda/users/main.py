@@ -1,5 +1,6 @@
 import json
 import os
+import time
 import uuid
 import boto3
 import stripe
@@ -48,6 +49,9 @@ def handler(event, context):
                 'stripe_customer_id': {
                     'S': create_customer_response['id'],
                 },
+				'timestamp': {
+					'S': time.time(),
+				}
             }
         )
 

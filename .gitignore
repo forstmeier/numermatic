@@ -9,6 +9,3 @@ etc/storage/
 
 # SAM-generated resources
 .aws-sam/
-
-# test resources
-etc/test/

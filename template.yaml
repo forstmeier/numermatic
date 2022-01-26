@@ -160,14 +160,10 @@ Resources:
       Description: function responsible for parsing uploads and starting model training flow
       Environment:
         Variables:
-          # UPLOADS_BUCKET_NAME:
-          #   Fn::Sub: '${AWS::StackName}-uploads'
           MODELS_BUCKET_NAME:
             Fn::Sub: '${AWS::StackName}-models'
           USERS_TABLE_NAME:
             Ref: usersTable
-          SOURCE_EMAIL:
-            Ref: SourceEmail
       Events:
         starterEvent:
           Type: S3
@@ -203,6 +199,8 @@ Resources:
             Fn::Sub: '${AWS::StackName}-outputs'
           DATA_BUCKET_NAME:
             Ref: DataBucket
+          MODELS_BUCKET_NAME:
+            Fn::Sub: '${AWS::StackName}-models'
           SAGEMAKER_ROLE_ARN:
             Fn::GetAtt:
               - sageMakerRole
@@ -243,8 +241,52 @@ Resources:
                 - s3:PutObject
               Resource: 
                 Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
+            - Effect: Allow
+              Action:
+                - states:CreateStateMachine
+                - states:StartExecution
+              Resource: '*'
+            - Effect: Allow
+              Action:
+                - iam:PassRole
+              Resource:
+                Fn::GetAtt:
+                  - stepFunctionRole
+                  - Arn
       Runtime: python3.7
       Timeout: 60
+  enderFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: cmd/lambda/ender/
+      Description: function responsible for sending emails to users
+      Environment:
+        Variables:
+          OUTPUTS_BUCKET_NAME:
+            Fn::Sub: '${AWS::StackName}-outputs'
+          SOURCE_EMAIL:
+            Ref: SourceEmail
+          OUTPUTS_TABLE_NAME:
+            Ref: outputsTable
+      Events:
+        enderEvent:
+          Type: S3
+          Properties:
+            Bucket:
+              Ref: outputsBucket
+            Events: s3:ObjectCreated:*
+      Handler: main.handler
+      MemorySize: 256
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - s3:GetObject
+              Resource: 
+                Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
+      Runtime: python3.7
+      Timeout: 15
   sageMakerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -266,37 +308,16 @@ Resources:
                   - s3:GetObject
                 Resource:
                   Fn::Sub: 'arn:aws:s3:::${DataBucket}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: 
+                  Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
           PolicyName: numermatic-sagemaker-policy
-  enderFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: cmd/lambda/ender/
-      Description: function responsible for sending emails to users
-      Environment:
-        Variables:
-          OUTPUTS_BUCKET_NAME:
-            Fn::Sub: '${AWS::StackName}-outputs'
-          SOURCE_EMAIL:
-            Ref: SourceEmail
-      Events:
-        enderEvent:
-          Type: S3
-          Properties:
-            Bucket:
-              Ref: outputsBucket
-            Events: s3:ObjectCreated:*
-      Handler: main.handler
-      MemorySize: 256
-      Policies:
-        - Version: '2012-10-17' 
-          Statement:
-            - Effect: Allow
-              Action:
-                - s3:GetObject
-              Resource: 
-                Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
-      Runtime: python3.7
-      Timeout: 15
   stepFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -309,22 +330,45 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
-    #   Policies:
-    #     - PolicyDocument:
-    #         Version: '2012-10-17'
-    #         Statement:
-    #           - Effect: Allow
-    #             Action:
-    #               - s3:GetObject
-    #             Resource:
-    #               Fn::Sub: 'arn:aws:s3:::${DataBucket}/*'
-    #       PolicyName: numermatic-step-function-policy
+      Policies:
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:PutTargets
+                  - events:PutRule
+                  - events:DescribeRule
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: '*'
+          PolicyName: numermatic-step-function-policy
   usersTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
       PrimaryKey:
         Name: id
         Type: String
+  outputsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+        - AttributeName: execution_id
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+        - AttributeName: execution_id
+          KeyType: RANGE
+      TimeToLiveSpecification:
+        AttributeName: expiration
+        Enabled: true
+
   api:
     Type: AWS::Serverless::Api
     Properties:

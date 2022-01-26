@@ -22,7 +22,7 @@ def handler(event, context):
 		print('get_item_response:', get_item_response)
 
 		user_id = get_item_response['Item']['id']['S']
-		execution_id = str(uuid.uuid4())
+		execution_id = str(uuid.uuid4().hex)
 
 		generate_presigned_url_response = s3.generate_presigned_url(
 			ClientMethod='put_object',

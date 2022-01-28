@@ -6,4 +6,12 @@ aws dynamodb scan \
 	--table-name $users_table_name \
 	> etc/data/users_table.json
 
+models_bucket=$( aws cloudformation describe-stack-resources --stack-name numermatic --query 'StackResources[?ResourceType==`AWS::S3::Bucket`].PhysicalResourceId | [0]' --output text )
+outputs_bucket=$( aws cloudformation describe-stack-resources --stack-name numermatic --query 'StackResources[?ResourceType==`AWS::S3::Bucket`].PhysicalResourceId | [1]' --output text )
+uploads_bucket=$( aws cloudformation describe-stack-resources --stack-name numermatic --query 'StackResources[?ResourceType==`AWS::S3::Bucket`].PhysicalResourceId | [2]' --output text )
+
+aws s3 rm s3://$models_bucket --recursive
+aws s3 rm s3://$outputs_bucket --recursive
+aws s3 rm s3://$uploads_bucket --recursive
+
 aws cloudformation delete-stack --stack-name numermatic

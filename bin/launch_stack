@@ -4,3 +4,7 @@
 # AWS account
 
 sam deploy --no-confirm-changeset
+
+models_bucket=$( aws cloudformation describe-stack-resources --stack-name numermatic --query 'StackResources[?ResourceType==`AWS::S3::Bucket`].PhysicalResourceId | [0]' --output text )
+
+aws s3 cp etc/wrapper/wrapper.py s3://$models_bucket/numermatic/wrapper.py

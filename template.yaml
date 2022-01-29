@@ -117,10 +117,10 @@ Resources:
                   - Arn
       Runtime: python3.7
       Timeout: 15
-  modelsFunction:
+  uploadsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: cmd/lambda/models/
+      CodeUri: cmd/lambda/uploads/
       Description: function responsible generating model upload URLs
       Environment:
         Variables:
@@ -133,7 +133,7 @@ Resources:
           Type: Api
           Properties:
             Method: GET
-            Path: /models
+            Path: /uploads
             RestApiId:
               Ref: api
       Handler: main.handler
@@ -429,7 +429,7 @@ Outputs:
     Description: Endpoint for receiving add user requests
     Value:
       Fn::Sub: https://${api}.execute-api.${AWS::Region}.amazonaws.com/prod/users
-  ModelsAPIEndpoint:
+  UploadsAPIEndpoint:
     Description: Endpoint for receiving model resources
     Value:
-      Fn::Sub: https://${api}.execute-api.${AWS::Region}.amazonaws.com/prod/models
+      Fn::Sub: https://${api}.execute-api.${AWS::Region}.amazonaws.com/prod/uploads

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+# helper script for uploading
+# model files
+
+user_id=$1
+model_path=$2
+
+uploads_api_endpoint=$( aws cloudformation describe-stacks --stack-name numermatic --query 'Stacks[0].Outputs[?OutputKey==`UploadsAPIEndpoint`].OutputValue' --output text )
+
+uploads_url=$( curl $uploads_api_endpoint --header "numermatic-user-id: $user_id" | jq -r '.url' )
+
+curl --upload-file $model_path $uploads_url

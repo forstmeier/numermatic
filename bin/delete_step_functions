@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# helper script for deleting state machines
+
 for state_machine_arn in $(aws stepfunctions list-state-machines \
 	--no-paginate \
 	--query 'stateMachines[?contains(name, `numermatic-`) == `true`].stateMachineArn' --output text); do

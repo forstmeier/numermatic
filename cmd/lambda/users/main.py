@@ -10,7 +10,7 @@ def handler(event, context):
 
 	user_id = str(uuid.uuid4().hex)
 
-	body = event['body']
+	body = json.loads(event['body'])
 
 	dynamodb = boto3.client('dynamodb')
 
@@ -25,15 +25,15 @@ def handler(event, context):
 					'S': body['email'],
 				},
 				'timestamp': {
-					'S': time.time(),
+					'N': str(time.time()),
 				}
 			}
 		)
 
 		return {
 			'body': json.dumps({
-				message: 'successfully created user',
-				user_id: user_id,
+				'message': 'successfully created user',
+				'user_id': user_id,
 			}),
 			'statusCode': 200,
 			'isBase64Encoded': False,

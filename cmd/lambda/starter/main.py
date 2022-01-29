@@ -43,13 +43,7 @@ def handler(event, context):
 			Key='{}/{}/models/requirements.txt'.format(user_id, execution_id),
 		)
 
-		return None # TEMP
+		return True
 
 	except Exception as e:
 		print('exception:', e)
-
-		# outline:
-		# [ ] get user email
-		# [ ] send error email
-		# - [ ] possibly trigger "failure" lambda
-		# - [ ] send email

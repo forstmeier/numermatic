@@ -6,29 +6,29 @@ import boto3
 
 
 def handler(event, context):
-    print('event:', event)
+	print('event:', event)
 
-    user_id = str(uuid.uuid4().hex)
+	user_id = str(uuid.uuid4().hex)
 
-    body = event['body']
+	body = event['body']
 
-    dynamodb = boto3.client('dynamodb')
+	dynamodb = boto3.client('dynamodb')
 
-    try:
-        put_item_response = dynamodb.put_item(
-            TableName=os.getenv('USERS_TABLE_NAME'),
-            Item={
-                'id': {
-                    'S': user_id,
-                },
-                'email': {
-                    'S': body['email'],
-                },
+	try:
+		put_item_response = dynamodb.put_item(
+			TableName=os.getenv('USERS_TABLE_NAME'),
+			Item={
+				'id': {
+					'S': user_id,
+				},
+				'email': {
+					'S': body['email'],
+				},
 				'timestamp': {
 					'S': time.time(),
 				}
-            }
-        )
+			}
+		)
 
 		return {
 			'body': json.dumps({
@@ -39,10 +39,10 @@ def handler(event, context):
 			'isBase64Encoded': False,
 		}
 
-    except Exception as e:
+	except Exception as e:
 		print('exception:', e)
-        return {
-            'body': str(e),
-            'statusCode': 500,
-            'isBase64Encoded': False,
-        }
+		return {
+			'body': str(e),
+			'statusCode': 500,
+			'isBase64Encoded': False,
+		}

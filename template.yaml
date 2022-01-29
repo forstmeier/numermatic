@@ -155,10 +155,10 @@ Resources:
                 Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-uploads*'
       Runtime: python3.7
       Timeout: 15
-  starterFunction:
+  filesFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: cmd/lambda/starter/
+      CodeUri: cmd/lambda/files/
       Description: function responsible for parsing uploads and starting model training flow
       Environment:
         Variables:
@@ -167,7 +167,7 @@ Resources:
           USERS_TABLE_NAME:
             Ref: usersTable
       Events:
-        starterEvent:
+        filesEvent:
           Type: S3
           Properties:
             Bucket:

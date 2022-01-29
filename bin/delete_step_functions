@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+for state_machine_arn in $(aws stepfunctions list-state-machines \
+	--no-paginate \
+	--query 'stateMachines[?contains(name, `numermatic-`) == `true`].stateMachineArn' --output text); do
+
+	aws stepfunctions delete-state-machine \
+		--state-machine-arn $state_machine_arn
+
+done

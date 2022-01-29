@@ -190,10 +190,10 @@ Resources:
                 Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-models/*'
       Runtime: python3.7
       Timeout: 30
-  builderFunction:
+  modelsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: cmd/lambda/builder/
+      CodeUri: cmd/lambda/models/
       Description: function responsible for training and inferring models
       Environment:
         Variables:
@@ -207,16 +207,16 @@ Resources:
             Fn::GetAtt:
               - sageMakerRole
               - Arn
-          ENDER_FUNCTION_ARN:
+          END_FUNCTION_ARN:
             Fn::GetAtt:
-              - enderFunction
+              - endFunction
               - Arn
           STEP_FUNCTION_ROLE_ARN:
             Fn::GetAtt:
               - stepFunctionRole
               - Arn
       Events:
-        builderEvent:
+        modelsEvent:
           Type: S3
           Properties:
             Bucket:
@@ -262,10 +262,10 @@ Resources:
                   - Arn
       Runtime: python3.7
       Timeout: 60
-  enderFunction:
+  endFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: cmd/lambda/ender/
+      CodeUri: cmd/lambda/end/
       Description: function responsible for sending emails to users
       Environment:
         Variables:
@@ -274,7 +274,7 @@ Resources:
           OUTPUTS_TABLE_NAME:
             Ref: outputsTable
       Events:
-        enderEvent:
+        endEvent:
           Type: S3
           Properties:
             Bucket:

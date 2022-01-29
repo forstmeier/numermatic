@@ -20,12 +20,6 @@ Parameters:
   NumeraiSecretKey:
     Type: String
     Description: Numerai secret key
-  SourceEmail:
-    Type: String
-    Description: Source email address to send notifications from
-  StripeAPIKey:
-    Type: String
-    Description: Stripe API key
   CertificateARN:
     Type: String
     Description: AWS managed certificate ARN
@@ -99,12 +93,10 @@ Resources:
       Description: function responsible for adding new users to the application
       Environment:
         Variables:
-          STRIPE_API_KEY:
-            Ref: StripeAPIKey
           USERS_TABLE_NAME:
             Ref: usersTable
       Events:
-        UserEvent:
+        userEvent:
           Type: Api
           Properties:
             Method: POST
@@ -127,7 +119,7 @@ Resources:
           USERS_TABLE_NAME:
             Ref: usersTable
       Events:
-        ModelEvent:
+        modelEvent:
           Type: Api
           Properties:
             Method: GET
@@ -233,14 +225,19 @@ Resources:
                 Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-models/*'
             - Effect: Allow
               Action:
+                - s3:PutObject
+                - s3:GetObject
+              Resource: 
+                Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
+            - Effect: Allow
+              Action:
                 - s3:GetObject
               Resource:
                 Fn::Sub: 'arn:aws:s3:::${DataBucket}/*'
             - Effect: Allow
               Action:
-                - s3:PutObject
-              Resource: 
-                Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
+                - s3:ListBucket
+              Resource: '*'
             - Effect: Allow
               Action:
                 - states:CreateStateMachine
@@ -264,8 +261,6 @@ Resources:
         Variables:
           OUTPUTS_BUCKET_NAME:
             Fn::Sub: '${AWS::StackName}-outputs'
-          SOURCE_EMAIL:
-            Ref: SourceEmail
           OUTPUTS_TABLE_NAME:
             Ref: outputsTable
       Events:
@@ -283,8 +278,40 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:GetObject
+                - s3:PutObject
               Resource: 
                 Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
+      Runtime: python3.7
+      Timeout: 15
+  outputsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: cmd/lambda/outputs/
+      Description: function responsible providing 
+      Environment:
+        Variables:
+          OUTPUTS_TABLE_NAME:
+            Ref: outputsTable
+      Events:
+        outputsEvent:
+          Type: Api
+          Properties:
+            Method: GET
+            Path: /outputs
+            RestApiId:
+              Ref: api
+      Handler: main.handler
+      MemorySize: 256
+      Policies:
+        - Version: '2012-10-17' 
+          Statement:
+            - Effect: Allow
+              Action:
+                - dynamodb:GetItem
+              Resource: 
+                Fn::GetAtt:
+                  - outputsTable
+                  - Arn
       Runtime: python3.7
       Timeout: 15
   sageMakerRole:
@@ -306,17 +333,23 @@ Resources:
               - Effect: Allow
                 Action:
                   - s3:GetObject
+                Resource: 
+                  Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-models/*'
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: 
+                  Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
                 Resource:
                   Fn::Sub: 'arn:aws:s3:::${DataBucket}/*'
               - Effect: Allow
                 Action:
                   - s3:ListBucket
                 Resource: '*'
-              - Effect: Allow
-                Action:
-                  - s3:PutObject
-                Resource: 
-                  Fn::Sub: 'arn:aws:s3:::${AWS::StackName}-outputs/*'
           PolicyName: numermatic-sagemaker-policy
   stepFunctionRole:
     Type: AWS::IAM::Role

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+# helper script for adding users
+# to the application and receiving
+# user IDs for interacting with the
+# API
+
+email=$1
+
+users_api_endpoint=$( aws cloudformation describe-stacks --stack-name numermatic --query 'Stacks[0].Outputs[?OutputKey==`UsersAPIEndpoint`].OutputValue' --output text )
+
+curl -X POST $users_api_endpoint --data '{"email":"$email"}'

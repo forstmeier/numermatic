@@ -20,9 +20,6 @@ Parameters:
   NumeraiSecretKey:
     Type: String
     Description: Numerai secret key
-  CertificateARN:
-    Type: String
-    Description: AWS managed certificate ARN
 
 Mappings:
   SchedulerToggle:
@@ -415,10 +412,6 @@ Resources:
   api:
     Type: AWS::Serverless::Api
     Properties:
-      Domain:
-        CertificateArn:
-          Ref: CertificateARN
-        DomainName: numermatic.com
       StageName: prod
 
 Outputs:

@@ -1,0 +1,18 @@
+version=0.1
+
+[default.global.parameters]
+stack_name = "REPLACE ME"
+region = "us-east-1"
+
+[default.deploy.parameters]
+parameter_overrides = [
+	"DataBucket=REPLACE ME",
+	"SchedulerEnabled=true",
+    "NumeraiPublicID=REPLACE ME",
+    "NumeraiSecretKey=REPLACE ME",
+]
+
+s3_bucket = "REPLACE ME"
+capabilities = ["CAPABILITY_IAM"]
+region = "us-east-1"
+profile = "default"

@@ -4,7 +4,7 @@
 
 ## About :sunglasses:
 
-`numermatic` is a platform for training Numerai models in the cloud. It is a simple, easy to use, and free to use API hosted in your own AWS account.
+`numermatic` is a platform for training [Numerai](https://numer.ai/) models in the cloud. It provides a free to use API hosted in your own AWS account.  
 
 ## Setup :nerd_face:
 
@@ -59,13 +59,14 @@ Upload a ZIPed model file to the application and begin a training execution. The
 
 > :warning: This application is still in development.  
 
-The "transform" step of the training flow is currently failing and is a help wanted issue. The `models` and `end` Lambda functions still need to be wrapped up. Not all of the Lambdas have been comprehensively tested yet either.  
+The "transform" step of the training flow is currently failing and is a **help wanted** issue. The `models` and `end` Lambda functions still need to be wrapped up and incorporated into the full execution flow. Not all of the Lambdas have been comprehensively tested yet either.  
 
 #### Future Work
 
 1. An email notification with the presigned URLs for the trained model when it's completed.  
 2. Replace the hard-coded XGBoost with a custom image to accept more frameworks.  
-3. TBD
+3. Improve user experience with a UI element or simplified helper scripts.  
+4. TBD
 
 These are likely dependent on Numerai community support and/or code contributions.  
 

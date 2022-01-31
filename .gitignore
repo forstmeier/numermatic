@@ -1,5 +1,5 @@
 # config file
-samconfig.toml
+/samconfig.toml
 
 # data files
 etc/data/

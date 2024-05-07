@@ -1,2 +1,2 @@
-sagemaker==2.73.0
+sagemaker==2.218.0
 stepfunctions==2.2.0
